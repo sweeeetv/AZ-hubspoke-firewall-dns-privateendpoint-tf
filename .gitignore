@@ -1,10 +1,7 @@
 # Local .terraform directories
 **/.terraform/*
 
-# Terraform lock file (optional: some teams commit this)
-# .terraform.lock.hcl
-
-# State files
+# .tfstate files
 *.tfstate
 *.tfstate.*
 *.tfstate.backup
@@ -24,17 +21,17 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 
-# Plan files (may contain secrets)
-*.tfplan
+# Include plugin cache directory
+.terraform.lock.hcl
 
-# CLI config
-.terraformrc
-terraform.rc
+# Ignoring terraform.tfvars as they often contain secrets
+*.tfvars
+*.tfvars.json
 
-# OS
+# OS generated files
 .DS_Store
 Thumbs.db
 
-# IDE
-.vscode/
-.idea/  
+
+# note, idea files
+note.txt

@@ -19,7 +19,7 @@ locals {
 # ─────────────────────────────────────────────────────────────────────────────
 # hub vnet
 # ─────────────────────────────────────────────────────────────────────────────
-resource azurem_virtual_network "hub_vnet" {
+resource "azurerm_virtual_network" "hub_vnet" {
     name = "vnet-${var.prefix}-hub"
     resource_group_name = var.rg_name
     location = var.location
@@ -29,25 +29,26 @@ resource azurem_virtual_network "hub_vnet" {
     //step3, 10.0.1.X -> private dns
     dns_servers = var.dns_servers
 }
+
 //subnet for fw
 resource "azurerm_subnet" "hub_fw_subnet" {
     name = "AzureFirewallSubnet" //required naming
     resource_group_name = var.rg_name
-    virtual_network_name = azurem_virtual_network.hub_vnet.name
+    virtual_network_name = azurerm_virtual_network.hub_vnet.name
     address_prefixes = [local.hub_fw_subnet_cidr]
 }
 //subnet for dns forwarder - inbound dns queries from spokes.
 resource "azurerm_subnet" "hub_dnsr_in_subnet" {
     name = "dnsr-in"
     resource_group_name = var.rg_name
-    virtual_network_name = azurem_virtual_network.hub_vnet.name
+    virtual_network_name = azurerm_virtual_network.hub_vnet.name
     address_prefixes = [local.hub_dnsr_in_cidr]
     //必须 delegation -> this subnet is locked for fw private ep only.
     delegation {
         name = "dnsr-in-delegation"
         service_delegation {
-            name = "Microsoft.Network/dnsForwardingRulesets"
-            actions = ["Microsoft.Network/dnsForwardingRulesets/*"]
+        name    = "Microsoft.Network/dnsResolvers"
+        actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
         }
     }
 }
@@ -56,17 +57,17 @@ resource "azurerm_subnet" "hub_dnsr_in_subnet" {
 resource "azurerm_subnet" "hub_dnsr_out_subnet" {
     name = "dnsr-out"
     resource_group_name = var.rg_name
-    virtual_network_name = azurem_virtual_network.hub_vnet.name
+    virtual_network_name = azurerm_virtual_network.hub_vnet.name
     address_prefixes = [local.hub_dnsr_out_cidr]
     //必须 resolver needs to put a nic here.
     delegation {
         name = "dnsr-out-delegation"
         service_delegation {
-            name = "Microsoft.Network/dnsForwardingRulesets"
-            actions = ["Microsoft.Network/dnsForwardingRulesets/*"]
+        name    = "Microsoft.Network/dnsResolvers"
+        actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
         }
     }
-}
+} 
 # ─────────────────────────────────────────────────────────────────────────────
 # spoke 1 -> no public inbound [clinical workloads like HL7, Epic, ETL]
 # on-prem clinicians need vpn or ER to access.
@@ -89,6 +90,7 @@ resource "azurerm_subnet" "spoke1_workload_subnet" {
     resource_group_name = var.rg_name
     virtual_network_name = azurerm_virtual_network.spoke1_vnet.name
     address_prefixes = [local.spoke1_workload_cidr]
+    private_endpoint_network_policies = "Enabled" //If "Disabled", the system route to the PE IP takes precedence over UDR. This is NOT the desired behavior for Private Endpoints.
 }
 # ─────────────────────────────────────────────────────────────────────────────
 # spoke 2 -> shared services, private endpoints.
@@ -107,7 +109,7 @@ resource "azurerm_subnet" "spoke2_pe_subnet" {
     virtual_network_name = azurerm_virtual_network.spoke2_vnet.name
     address_prefixes = [local.spoke2_pe_cidr]
     //decides NSGs and UDRs actually apply to the traffic going to a PE in that subnet.
-    private_endpoint_network_policies = "Disabled" //required for private endpoints
+    private_endpoint_network_policies = "Disabled" //If "Enabled", NSGs and UDRs are enforced on the private endpoint. If "Disabled", the system route to the PE IP takes precedence over UDR. This is the desired behavior for Private Endpoints.
 }
 # ─────────────────────────────────────────────────────────────────────────────
 # peerings - hub to spokes, spokes to hub
@@ -116,18 +118,19 @@ resource "azurerm_subnet" "spoke2_pe_subnet" {
 resource "azurerm_virtual_network_peering" "hub_to_spoke1" {
     name = "hub-to-spoke1"
     resource_group_name = var.rg_name
-    virtual_network_name = azurem_virtual_network.hub_vnet.name
-    remote_virtual_network_id = azurem_virtual_network.spoke1_vnet.id
+    virtual_network_name = azurerm_virtual_network.hub_vnet.name
+    remote_virtual_network_id = azurerm_virtual_network.spoke1_vnet.id
     allow_forwarded_traffic = true // allowed to receive packets from the spoke1 that did not originate in the spoke1
     allow_gateway_transit = false
     allow_virtual_network_access = true // Allow hub to initiate communication to the spoke1.
 }
+
 # spoke1 -> hub
 resource "azurerm_virtual_network_peering" "spoke1_to_hub" {
     name = "spoke1-to-hub"
     resource_group_name =var.rg_name
-    virtual_network_name = azurem_virtual_network.spoke1_vnet.name
-    remote_virtual_network_id = azurem_virtual_network.hub_vnet.id
+    virtual_network_name = azurerm_virtual_network.spoke1_vnet.name
+    remote_virtual_network_id = azurerm_virtual_network.hub_vnet.id
     allow_forwarded_traffic = true // allowed to receive packets from the Hub that did not originate in the Hub
     allow_virtual_network_access = true // Allows Spoke1 to initiate communication to the Hub.
 }
@@ -135,8 +138,8 @@ resource "azurerm_virtual_network_peering" "spoke1_to_hub" {
 resource "azurerm_virtual_network_peering" "hub_to_spoke2" {
     name = "hub-to-spoke2"
     resource_group_name = var.rg_name
-    virtual_network_name = azurem_virtual_network.hub_vnet.name
-    remote_virtual_network_id = azurem_virtual_network.spoke2_vnet.id
+    virtual_network_name = azurerm_virtual_network.hub_vnet.name
+    remote_virtual_network_id = azurerm_virtual_network.spoke2_vnet.id
     allow_forwarded_traffic = true // allowed to receive packets from the spoke2 that did not originate in the spoke2
     allow_gateway_transit = false
     allow_virtual_network_access = true // Allow hub to initiate communication to the spoke2.
@@ -145,8 +148,8 @@ resource "azurerm_virtual_network_peering" "hub_to_spoke2" {
 resource "azurerm_virtual_network_peering" "spoke2_to_hub" {
     name = "spoke2-to-hub"
     resource_group_name = var.rg_name
-    virtual_network_name = azurem_virtual_network.spoke2_vnet.name
-    remote_virtual_network_id = azurem_virtual_network.hub_vnet.id
+    virtual_network_name = azurerm_virtual_network.spoke2_vnet.name
+    remote_virtual_network_id = azurerm_virtual_network.hub_vnet.id
     allow_forwarded_traffic = true // allowed to receive packets from the Hub that did not originate in the Hub
     allow_virtual_network_access = true // Allows Spoke2 to initiate communication to the Hub.
 }
@@ -168,7 +171,7 @@ resource "azurerm_network_security_group" "spoke1" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "22"
-    source_address_prefix      = var.mac_pub_ip
+    source_address_prefix      = var.mac_pub_ip //later to add
     destination_address_prefix = "*"
   }
 }
@@ -188,7 +191,7 @@ resource "azurerm_network_security_group" "spoke2" {
 }
 //associate nsg to spoke2 pe subnet
 resource "azurerm_subnet_network_security_group_association" "spoke2" {
-  subnet_id                 = azurerm_subnet.spoke2_pe.id
+  subnet_id                 = azurerm_subnet.spoke2_pe_subnet.id
   network_security_group_id = azurerm_network_security_group.spoke2.id
 }
 # -────────────────────────────────────────────────────────────────────────────
@@ -215,13 +218,12 @@ resource "azurerm_network_interface" "vm" {
         public_ip_address_id = azurerm_public_ip.vm.id
     }
 }
-//
-
+//临床 VM, for testing connectivity, peering, NSGs, UDRs, and later firewall rules.
 resource "azurerm_linux_virtual_machine" "clinical" {
   name                  = "vm-${var.prefix}-clinical-01"
   resource_group_name   = var.rg_name
   location              = var.location
-  size                  = "Standard_B2s"
+  size                  = "Standard_B2s_v2"
   admin_username        = var.admin_username
   network_interface_ids = [azurerm_network_interface.vm.id]
   tags                  = var.tags
@@ -248,3 +250,4 @@ resource "azurerm_linux_virtual_machine" "clinical" {
     version   = "latest"
   }
 }
+

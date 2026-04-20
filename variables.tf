@@ -1,6 +1,11 @@
 # ─────────────────────────────────────────────
 # Global
 # ─────────────────────────────────────────────
+variable "subscription_id" {
+  description = "Your Azure subscription ID"
+  type        = string
+  default     = "bcd4fe40-938d-48e2-bea9-6425a552c4ab"
+}
 variable "location" {
   type        = string
   default     = "australiasoutheast"
@@ -16,6 +21,10 @@ variable "tags" {
     default     = {
     project ="az700-hub-spoke-firewall-dns"
     }
+}
+variable "dns_servers" {
+  type    = list(string)
+  default = []
 }
 # ─────────────────────────────────────────────
 # network block
@@ -65,7 +74,7 @@ variable "deploy_dns_resolver" {
   type        = bool
   default     = false
 }
-
+ 
 variable "deploy_key_vault" {
   description = "Step 4: Deploy Key Vault + Private Endpoint."
   type        = bool
