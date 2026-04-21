@@ -6,4 +6,7 @@ variable "hub_vnet_name"               { type = string }
 variable "spoke1_workload_subnet_id"   { type = string }
 variable "spoke2_pe_subnet_id"         { type = string }
 variable "log_analytics_workspace_id"  { type = string }
+variable "fw_subnet_id"                { type = string }
 
+
+ 

@@ -4,6 +4,7 @@ output "hub_dnsr_inbound_subnet_id"     { value = azurerm_subnet.hub_dnsr_in_sub
 output "hub_dnsr_outbound_subnet_id"    { value = azurerm_subnet.hub_dnsr_out_subnet.id }
 output "spoke1_workload_subnet_id"      { value = azurerm_subnet.spoke1_workload_subnet.id }
 output "spoke2_pe_subnet_id"            { value = azurerm_subnet.spoke2_pe_subnet.id }
+output "hub_fw_subnet_id"               { value = azurerm_subnet.hub_fw_subnet.id }
 output "spoke1_nsg_id"                  { value = azurerm_network_security_group.spoke1.id }
 output "spoke2_nsg_id"                  { value = azurerm_network_security_group.spoke2.id }
 output "vm_public_ip"                   { value = azurerm_public_ip.vm.ip_address }

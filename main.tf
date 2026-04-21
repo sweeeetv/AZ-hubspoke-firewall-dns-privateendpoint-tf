@@ -54,6 +54,7 @@ module "firewall" {
     hub_vnet_name = module.hub.hub_vnet_name
     spoke1_workload_subnet_id = module.hub.spoke1_workload_subnet_id
     spoke2_pe_subnet_id = module.hub.spoke2_pe_subnet_id
+    fw_subnet_id = module.hub.hub_fw_subnet_id 
     log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
 }
 # ─────────────────────────────────────────────────────────────────────────────

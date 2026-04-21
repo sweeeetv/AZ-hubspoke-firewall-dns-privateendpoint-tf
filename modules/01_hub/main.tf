@@ -223,7 +223,7 @@ resource "azurerm_linux_virtual_machine" "clinical" {
   name                  = "vm-${var.prefix}-clinical-01"
   resource_group_name   = var.rg_name
   location              = var.location
-  size                  = "Standard_B2s_v2"
+  size                  = "Standard_B2ats_v2"
   admin_username        = var.admin_username
   network_interface_ids = [azurerm_network_interface.vm.id]
   tags                  = var.tags
